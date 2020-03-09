@@ -31,9 +31,13 @@
 
 (defvar bigquery-mode-map
   (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c d") 'bigquery-dry-run-query)
     (define-key map (kbd "C-c e") 'bigquery-run-query)
     map)
   "Keymap for BigQuery major mode")
+
+(defun bigquery-dry-run-query ()
+  (bigquery-set-current-project-id))
 
 (defun bigquery-run-query ()
   (print "foo"))
@@ -75,6 +79,12 @@
     st)
   "Syntax table for bigquery-mode")
 
+(defvar bigquery-project-id
+  (replace-regexp-in-string "\n$" "" (shell-command-to-string "gcloud config get-value project")))
+
+(defun bigquery-set-current-project-id ()
+  (setq mode-name (format "BigQuery[%s]" bigquery-project-id)))
+
 (defun bigquery-mode ()
   "Major mode for editing bigquery scripts"
   (interactive)
@@ -84,7 +94,7 @@
   (set (make-local-variable 'font-lock-defaults) '(bigquery-font-lock-keywords))
   (set (make-local-variable 'indent-line-function) 'bigquery-indent-line)
   (setq major-mode 'bigquery-mode)
-  (setq mode-name "BigQuery (Dev)")
+  (bigquery-set-current-project-id)
   (run-hooks 'bigquery-mode-hook)
   )
 
