@@ -49,14 +49,14 @@
   (defvar bigquery-font-lock-keywords))
 
 (eval-and-compile
-  (defun bigquery-font-lock-keyword-builder (face &rest keywords)
-    (cons (concat "\\<" (regexp-opt keywords t) "\\>") face)))
-    
+  (defun bigquery-font-lock-keyword-builder (face keywords)
+    (cons (concat "\\<" (regexp-opt keywords) "\\>") face)))
+
 (eval-when-compile
   (setq bigquery-font-lock-keywords
         (list
-         (bigquery-font-lock-keyword-builder 'font-lock-keyword-face "SELECT" "CREATE" "FROM")
-         (bigquery-font-lock-keyword-builder 'font-lock-function-name-face "MIN" "MAX"))))
+         (bigquery-font-lock-keyword-builder 'font-lock-keyword-face bigquery-keywords)
+         (bigquery-font-lock-keyword-builder 'font-lock-function-name-face '("MIN" "MAX")))))
 
 (defvar bigquery-font-lock-keywords
   (eval-when-compile bigquery-font-lock-keywords))
