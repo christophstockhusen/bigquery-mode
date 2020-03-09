@@ -40,7 +40,7 @@
   (bigquery-set-current-project-id))
 
 (defun bigquery-run-query ()
-  (print "foo"))
+  (bigquery-set-current-project-id))
 
 (add-to-list 'auto-mode-alist '("\\.sql\\'" . bigquery-mode))
 
@@ -60,7 +60,7 @@
   (setq bigquery-font-lock-keywords
         (list
          (bigquery-font-lock-keyword-builder 'font-lock-keyword-face bigquery-keywords)
-         (bigquery-font-lock-keyword-builder 'font-lock-function-name-face '("MIN" "MAX")))))
+         (bigquery-font-lock-keyword-builder 'font-lock-function-name-face bigquery-function-names))))
 
 (defvar bigquery-font-lock-keywords
   (eval-when-compile bigquery-font-lock-keywords))
