@@ -33,6 +33,7 @@
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "C-c d") 'bigquery-dry-run-query)
     (define-key map (kbd "C-c e") 'bigquery-run-query)
+    (define-key map (kbd "C-c t") 'bigquery-show-tables)
     map)
   "Keymap for BigQuery major mode")
 
@@ -41,6 +42,17 @@
 
 (defun bigquery-run-query ()
   (bigquery-set-current-project-id))
+
+(defconst bigquery-tables-buffer-name "* BigQuery Tables *")
+
+(defun bigquery-show-tables ()
+  (interactive)
+  (let ((buf (get-buffer-create bigquery-tables-buffer-name)))
+    (display-buffer-below-selected buf nil)
+    (with-current-buffer buf
+      (view-mode))
+    (let ((w (get-buffer-window buf)))
+         (select-window w))))
 
 (add-to-list 'auto-mode-alist '("\\.sql\\'" . bigquery-mode))
 
@@ -59,6 +71,8 @@
 (eval-when-compile
   (setq bigquery-font-lock-keywords
         (list
+         '("`.+`" . 'font-lock-constant-face)
+         '("--.*$" . 'font-lock-comment-face)
          (bigquery-font-lock-keyword-builder 'font-lock-keyword-face bigquery-keywords)
          (bigquery-font-lock-keyword-builder 'font-lock-function-name-face bigquery-function-names))))
 
@@ -85,6 +99,19 @@
 (defun bigquery-set-current-project-id ()
   (setq mode-name (format "BigQuery[%s]" bigquery-project-id)))
 
+(defvar bigquery-sql-indentation-offsets-alist
+  `((select-clause 0)
+    (insert-clause 0)
+    (delete-clause 0)
+    (update-clause 0)
+    (case-clause +)
+    ,@sqlind-default-indentation-offsets-alist))
+
+(add-hook 'sqlind-minor-mode-hook
+          (lambda ()
+            (setq sqlind-indentation-offsets-alist
+                  bigquery-sql-indentation-offsets-alist)))
+
 (defun bigquery-mode ()
   "Major mode for editing bigquery scripts"
   (interactive)
@@ -96,6 +123,7 @@
   (setq major-mode 'bigquery-mode)
   (bigquery-set-current-project-id)
   (run-hooks 'bigquery-mode-hook)
+  (sqlind-minor-mode)
   )
 
 (provide 'bigquery-mode)
