@@ -5,6 +5,7 @@
 ;; Author: Christoph Stockhusen <mail@christophstockhusen.de>
 ;; Keywords: bigquery
 ;; Version 0.0.1
+;; Package-Requires: ((sql-ident "1.4))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -28,6 +29,7 @@
 ;; code goes here
 
 (require 'json)
+;; (require 'sql-indent)
 
 (defvar bigquery-mode-hook nil)
 
@@ -47,20 +49,27 @@
 
 (defconst bigquery-tables-buffer-name "* BigQuery Tables *")
 
+(defun bigquery-fetch-datasets ()
+  (let ((json-object-type 'alist))
+    (json-read-from-string (shell-command-to-string "bq ls --format=json"))))
+
+(defun bqm-fetch-dataset-tabulated-list ()
+  (let ((datasets (bigquery-fetch-datasets)))
+    (mapcar (lambda (e) (list nil (vector (cdr (assoc 'id e)) (cdr (assoc 'location e))))) datasets)))
+
 (defun bigquery-show-tables ()
   (interactive)
   (let ((buf (get-buffer-create bigquery-tables-buffer-name))
-        (datasets (bigquery-fetch-datasets)))
+        (dataset-list (bqm-fetch-dataset-tabulated-list)))
     (with-current-buffer buf
-      (erase-buffer)
-      (insert datasets)
-      (view-mode))
-    (display-buffer-below-selected buf nil)
+      (setq tabulated-list-sort-key '("id" . nil))
+      (setq tabulated-list-format [("id" 50 nil) ("location" 5 nil)])
+      (setq tabulated-list-entries dataset-list)
+      (tabulated-list-mode))
+    (let ((height (min 10 (+ (length dataset-list) 2))))
+      (display-buffer-below-selected buf '((window-height . fit-window-to-buffer))))
     (let ((w (get-buffer-window buf)))
       (select-window w))))
-
-(defun bigquery-fetch-datasets ()
-  (replace-regexp-in-string "\n$" "" (shell-command-to-string "bq ls --format=json")))
 
 (add-to-list 'auto-mode-alist '("\\.sql\\'" . bigquery-mode))
 
@@ -86,14 +95,6 @@
 
 (defvar bigquery-font-lock-keywords
   (eval-when-compile bigquery-font-lock-keywords))
-
-(defun bigquery-mode-indent-line ()
-  "Indent current line"
-  (interactive)
-  (beginning-of-line)
-  (if (bobp)
-      (indent-line-to 0)
-    (indent-line-to 10)))
 
 (defvar bigquery-mode-syntax-table
   (let ((st (make-syntax-table)))
@@ -127,7 +128,6 @@
   (set-syntax-table bigquery-mode-syntax-table)
   (use-local-map bigquery-mode-map)
   (set (make-local-variable 'font-lock-defaults) '(bigquery-font-lock-keywords))
-  (set (make-local-variable 'indent-line-function) 'bigquery-indent-line)
   (setq major-mode 'bigquery-mode)
   (bigquery-set-current-project-id)
   (run-hooks 'bigquery-mode-hook)
