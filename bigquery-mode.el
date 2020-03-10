@@ -27,6 +27,8 @@
 
 ;; code goes here
 
+(require 'json)
+
 (defvar bigquery-mode-hook nil)
 
 (defvar bigquery-mode-map
@@ -47,12 +49,18 @@
 
 (defun bigquery-show-tables ()
   (interactive)
-  (let ((buf (get-buffer-create bigquery-tables-buffer-name)))
-    (display-buffer-below-selected buf nil)
+  (let ((buf (get-buffer-create bigquery-tables-buffer-name))
+        (datasets (bigquery-fetch-datasets)))
     (with-current-buffer buf
+      (erase-buffer)
+      (insert datasets)
       (view-mode))
+    (display-buffer-below-selected buf nil)
     (let ((w (get-buffer-window buf)))
-         (select-window w))))
+      (select-window w))))
+
+(defun bigquery-fetch-datasets ()
+  (replace-regexp-in-string "\n$" "" (shell-command-to-string "bq ls --format=json")))
 
 (add-to-list 'auto-mode-alist '("\\.sql\\'" . bigquery-mode))
 
