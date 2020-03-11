@@ -29,7 +29,7 @@
 ;; code goes here
 
 (require 'json)
-;; (require 'sql-indent)
+(require 'sql-indent)
 
 (defvar bigquery-mode-hook nil)
 
@@ -37,7 +37,7 @@
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "C-c d") 'bigquery-dry-run-query)
     (define-key map (kbd "C-c e") 'bigquery-run-query)
-    (define-key map (kbd "C-c t") 'bigquery-show-tables)
+    (define-key map (kbd "C-c t") 'bigquery-show-datasets)
     map)
   "Keymap for BigQuery major mode")
 
@@ -47,20 +47,40 @@
 (defun bigquery-run-query ()
   (bigquery-set-current-project-id))
 
+(defconst bigquery-datasets-buffer-name "* BigQuery Datasets *")
 (defconst bigquery-tables-buffer-name "* BigQuery Tables *")
 
 (defun bigquery-fetch-datasets ()
   (let ((json-object-type 'alist))
     (json-read-from-string (shell-command-to-string "bq ls --format=json"))))
 
-(defun bqm-fetch-dataset-tabulated-list ()
-  (let ((datasets (bigquery-fetch-datasets)))
-    (mapcar (lambda (e) (list nil (vector (cdr (assoc 'id e)) (cdr (assoc 'location e))))) datasets)))
+(defun bqm-tab-list-dataset-button-props (dataset-name)
+  (list 'action (lambda (b) (bigquery-show-tables (button-get b 'dataset))) 'dataset dataset-name))
 
-(defun bigquery-show-tables ()
+(defun bqm-fetch-tabulated-datasets-list ()
+  (let ((datasets (bigquery-fetch-datasets)))
+    (mapcar
+     (lambda (e) (let ((dataset (cdr (assoc 'id e))))
+                   (list nil (vector (cons dataset (bqm-tab-list-dataset-button-props dataset))
+                                     (cdr (assoc 'location e))))))
+     datasets)))
+    
+(defun bigquery-fetch-tables (dataset-name)
+  (let ((json-object-type 'alist))
+    (json-read-from-string (shell-command-to-string (format "bq ls --format=json %s" dataset-name)))))
+
+(defun bqm-fetch-tables-tabulated-list (dataset-name)
+  (let ((tables (bigquery-fetch-tables dataset-name)))
+    (mapcar (lambda (e) (list nil (vector (cons (cdr (assoc 'id e))
+                                                '(action (lambda (b) (button-get b 'table))
+                                                  table "foo"))
+                                          (cdr (assoc 'type e)))))
+            tables)))
+
+(defun bigquery-show-datasets ()
   (interactive)
-  (let ((buf (get-buffer-create bigquery-tables-buffer-name))
-        (dataset-list (bqm-fetch-dataset-tabulated-list)))
+  (let ((buf (get-buffer-create bigquery-datasets-buffer-name))
+        (dataset-list (bqm-fetch-tabulated-datasets-list)))
     (with-current-buffer buf
       (setq tabulated-list-sort-key '("id" . nil))
       (setq tabulated-list-format [("id" 50 nil) ("location" 5 nil)])
@@ -68,6 +88,20 @@
       (tabulated-list-mode))
     (let ((height (min 10 (+ (length dataset-list) 2))))
       (display-buffer-below-selected buf '((window-height . fit-window-to-buffer))))
+    (let ((w (get-buffer-window buf)))
+      (select-window w))))
+
+(defun bigquery-show-tables (dataset-name)
+  (interactive)
+  (let ((buf (get-buffer-create bigquery-tables-buffer-name))
+        (table-list (bqm-fetch-tables-tabulated-list dataset-name)))
+    (with-current-buffer buf
+      (setq tabulated-list-sort-key '("id" . nil))
+      (setq tabulated-list-format [("id" 100 nil) ("type" 5 nil)])
+      (setq tabulated-list-entries table-list)
+      (tabulated-list-mode))
+    (let ((height (min 10 (+ (length table-list) 2))))
+      (display-buffer-at-bottom buf '((window-height . fit-window-to-buffer))))
     (let ((w (get-buffer-window buf)))
       (select-window w))))
 
@@ -109,11 +143,7 @@
   (setq mode-name (format "BigQuery[%s]" bigquery-project-id)))
 
 (defvar bigquery-sql-indentation-offsets-alist
-  `((select-clause 0)
-    (insert-clause 0)
-    (delete-clause 0)
-    (update-clause 0)
-    (case-clause +)
+  `((case-clause +)
     ,@sqlind-default-indentation-offsets-alist))
 
 (add-hook 'sqlind-minor-mode-hook
