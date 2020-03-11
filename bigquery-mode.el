@@ -50,6 +50,7 @@
 (defconst bigquery-datasets-buffer-name "* BigQuery Datasets *")
 (defconst bigquery-tables-buffer-name "* BigQuery Tables *")
 (defconst bigquery-schema-buffer-name "* BigQuery Schema *")
+(defconst bigquery-table-buffer-name "* BigQuery Table *")
 
 (defun bigquery-fetch-datasets ()
   (let ((json-object-type 'alist))
@@ -129,6 +130,38 @@
       (setq tabulated-list-entries schema-list)
       (tabulated-list-mode))
     (let ((height (min 10 (+ (length schema-list) 2))))
+      (display-buffer-at-bottom buf '((window-height . fit-window-to-buffer))))
+    (let ((w (get-buffer-window buf)))
+      (select-window w))))
+
+;; (defun bqm-execute-query (query)
+;;   (json-read-from-string (shell-command-to-string (format "bq query --quiet --nouse_legacy_sql --format=json '%s'" query))))
+
+(defun bqm-table-list-format (table-name)
+  (let ((schema (bigquery-fetch-schema table-name)))
+    (apply 'vector
+           (mapcar (lambda (f) (list (cdr (assoc 'name f)) 20 nil))
+                   schema))))
+
+(defun bqm-table-head (table-name)
+  (json-read-from-string (shell-command-to-string (format "bq head --format=json %s" table-name))))
+
+(defun bqm-tab-list-table (table-name)
+  (let ((header (bqm-table-list-format table-name))
+        (content (bqm-table-head table-name))
+        (row-to-entry (lambda (row) (list nil (apply 'vector (mapcar (lambda (f) (cdr (assoc (intern (car f)) row)))
+                                header))))))
+    (mapcar row-to-entry content)))
+
+(defun bqm-show-table (table-name)
+  (interactive)
+  (let ((buf (get-buffer-create bigquery-table-buffer-name))
+        (content (bqm-table-head table-name)))
+    (with-current-buffer buf
+      (setq tabulated-list-format (bqm-table-list-format table-name))
+      (setq tabulated-list-entries (bqm-tab-list-table table-name))
+      (tabulated-list-mode))
+    (let ((height (min 10 (+ (length content) 2))))
       (display-buffer-at-bottom buf '((window-height . fit-window-to-buffer))))
     (let ((w (get-buffer-window buf)))
       (select-window w))))
