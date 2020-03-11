@@ -49,6 +49,7 @@
 
 (defconst bigquery-datasets-buffer-name "* BigQuery Datasets *")
 (defconst bigquery-tables-buffer-name "* BigQuery Tables *")
+(defconst bigquery-schema-buffer-name "* BigQuery Schema *")
 
 (defun bigquery-fetch-datasets ()
   (let ((json-object-type 'alist))
@@ -69,13 +70,26 @@
   (let ((json-object-type 'alist))
     (json-read-from-string (shell-command-to-string (format "bq ls --format=json %s" dataset-name)))))
 
+(defun bqm-tab-list-table-button-props (table-name)
+  (list 'action (lambda (b) (bigquery-show-schema (button-get b 'table))) 'table table-name))
+
 (defun bqm-fetch-tables-tabulated-list (dataset-name)
   (let ((tables (bigquery-fetch-tables dataset-name)))
-    (mapcar (lambda (e) (list nil (vector (cons (cdr (assoc 'id e))
-                                                '(action (lambda (b) (button-get b 'table))
-                                                  table "foo"))
+    (mapcar
+     (lambda (e) (let ((table (cdr (assoc 'id e))))
+                   (list nil (vector (cons table (bqm-tab-list-table-button-props table))
+                                     (cdr (assoc 'type e))))))
+     tables)))
+
+(defun bigquery-fetch-schema (table-name)
+  (let ((json-object-type 'alist))
+    (json-read-from-string (shell-command-to-string (format "bq show --schema %s" table-name)))))
+
+(defun bqm-fetch-tabulated-schema-list (table-name)
+  (let ((schema (bigquery-fetch-schema table-name)))
+    (mapcar (lambda (e) (list nil (vector (cdr (assoc 'name e))
                                           (cdr (assoc 'type e)))))
-            tables)))
+            schema)))
 
 (defun bigquery-show-datasets ()
   (interactive)
@@ -101,6 +115,20 @@
       (setq tabulated-list-entries table-list)
       (tabulated-list-mode))
     (let ((height (min 10 (+ (length table-list) 2))))
+      (display-buffer-at-bottom buf '((window-height . fit-window-to-buffer))))
+    (let ((w (get-buffer-window buf)))
+      (select-window w))))
+
+(defun bigquery-show-schema (table-name)
+  (interactive)
+  (let ((buf (get-buffer-create bigquery-schema-buffer-name))
+        (schema-list (bqm-fetch-tabulated-schema-list table-name)))
+    (with-current-buffer buf
+      (setq tabulated-list-sort-key '("name" . nil))
+      (setq tabulated-list-format [("name" 20 nil) ("type" 5 nil)])
+      (setq tabulated-list-entries schema-list)
+      (tabulated-list-mode))
+    (let ((height (min 10 (+ (length schema-list) 2))))
       (display-buffer-at-bottom buf '((window-height . fit-window-to-buffer))))
     (let ((w (get-buffer-window buf)))
       (select-window w))))
