@@ -1,4 +1,4 @@
-(defconst bigquery-keywords
+(defconst bqm-keywords
   '("ALL"
     "AND"
     "ANY"
@@ -94,6 +94,8 @@
     "WINDOW"
     "WITH"
     "WITHIN"))
+
+(provide 'bqm-names)
 
 (defconst bqm-function-names
   (list
@@ -323,4 +325,4 @@
    "ERROR"
    ))
 
-(provide 'bqm-names)
+(provide 'bqm-function-names)

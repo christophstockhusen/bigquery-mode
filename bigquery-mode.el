@@ -188,8 +188,6 @@
 
 (require 'bqm-names)
 
-(defconst bigquery-function-names '("MAX" "MIN"))
-
 (eval-when-compile
   (defvar bigquery-font-lock-keywords))
 
@@ -202,8 +200,8 @@
         (list
          '("`.+`" . 'font-lock-constant-face)
          '("--.*$" . 'font-lock-comment-face)
-         (bigquery-font-lock-keyword-builder 'font-lock-keyword-face bigquery-keywords)
-         (bigquery-font-lock-keyword-builder 'font-lock-function-name-face bigquery-function-names))))
+         (bigquery-font-lock-keyword-builder 'font-lock-keyword-face bqm-keywords)
+         (bigquery-font-lock-keyword-builder 'font-lock-function-name-face bqm-function-names))))
 
 (defvar bigquery-font-lock-keywords
   (eval-when-compile bigquery-font-lock-keywords))
