@@ -41,16 +41,17 @@
     map)
   "Keymap for BigQuery major mode")
 
-(defun bigquery-dry-run-query ()
-  (bigquery-set-current-project-id))
-
 (defun bigquery-run-query ()
-  (bigquery-set-current-project-id))
+  (interactive)
+  (bigquery-set-current-project-id)
+  (let ((query (buffer-substring-no-properties (point-min) (point-max))))
+    (bqm-execute-query query)))
 
 (defconst bigquery-datasets-buffer-name "* BigQuery Datasets *")
 (defconst bigquery-tables-buffer-name "* BigQuery Tables *")
 (defconst bigquery-schema-buffer-name "* BigQuery Schema *")
 (defconst bigquery-table-buffer-name "* BigQuery Table *")
+(defconst bigquery-query-buffer-name "* BigQuery Query *")
 
 (defun bigquery-fetch-datasets ()
   (let ((json-object-type 'alist))
@@ -102,7 +103,7 @@
       (setq tabulated-list-entries dataset-list)
       (tabulated-list-mode))
     (let ((height (min 10 (+ (length dataset-list) 2))))
-      (display-buffer-below-selected buf '((window-height . fit-window-to-buffer))))
+      (display-buffer-at-bottom buf '((window-height . fit-window-to-buffer))))
     (let ((w (get-buffer-window buf)))
       (select-window w))))
 
@@ -116,7 +117,7 @@
       (setq tabulated-list-entries table-list)
       (tabulated-list-mode))
     (let ((height (min 10 (+ (length table-list) 2))))
-      (display-buffer-at-bottom buf '((window-height . fit-window-to-buffer))))
+      (display-buffer-in-side-window buf '((window-height . fit-window-to-buffer))))
     (let ((w (get-buffer-window buf)))
       (select-window w))))
 
@@ -130,12 +131,29 @@
       (setq tabulated-list-entries schema-list)
       (tabulated-list-mode))
     (let ((height (min 10 (+ (length schema-list) 2))))
-      (display-buffer-at-bottom buf '((window-height . fit-window-to-buffer))))
+      (display-buffer-same-window buf '((window-height . fit-window-to-buffer))))
     (let ((w (get-buffer-window buf)))
       (select-window w))))
 
-;; (defun bqm-execute-query (query)
-;;   (json-read-from-string (shell-command-to-string (format "bq query --quiet --nouse_legacy_sql --format=json '%s'" query))))
+(defun bqm-execute-query (query)
+  "Runs query, returns corresponding job id"
+  (let ((job-id (bqm-generate-new-job-id)))
+    (bqm-submit-query query job-id)
+    job-id))
+
+(defun bqm-generate-new-job-id ()
+    (format-time-string "%s"))
+
+(defun bqm-submit-query (query job-id)
+  (let ((buf (get-buffer-create bigquery-query-buffer-name)))
+    (display-buffer-below-selected buf '((window-height . fit-window-to-buffer)))
+    (with-current-buffer buf
+      (fundamental-mode)
+      (erase-buffer)
+      (view-mode)
+      (select-window (get-buffer-window buf))
+      (let ((process (start-process "query" buf "bq" "query" "--quiet" "--nouse_legacy_sql" "--job_id" job-id query)))
+        (set-process-sentinel process (lambda (p m) (goto-char (point-min))))))))
 
 (defun bqm-table-list-format (table-name)
   (let ((schema (bigquery-fetch-schema table-name)))
@@ -162,7 +180,7 @@
       (setq tabulated-list-entries (bqm-tab-list-table table-name))
       (tabulated-list-mode))
     (let ((height (min 10 (+ (length content) 2))))
-      (display-buffer-at-bottom buf '((window-height . fit-window-to-buffer))))
+      (display-buffer-same-window buf '((window-height . fit-window-to-buffer))))
     (let ((w (get-buffer-window buf)))
       (select-window w))))
 
