@@ -22,11 +22,9 @@
 
 ;;; Commentary:
 
-;; foo
+;; Major mode for writing and executing Google BigQuery Queries.
 
 ;;; Code:
-
-;; code goes here
 
 (require 'json)
 (require 'sql-indent)
