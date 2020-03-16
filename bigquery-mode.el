@@ -1,4 +1,4 @@
-;;; bigquery-mode.el --- Trying to implement a BigQuery major mode
+;;; bigquery-mode.el --- A BigQuery major mode
 
 ;; Copyright (C) 2020 Christoph Stockhusen
 
@@ -29,27 +29,57 @@
 (require 'json)
 (require 'sql-indent)
 
-(defvar bigquery-mode-hook nil)
+(defconst bqm-projects-buffer-name "* BigQuery Projects *")
+(defconst bigquery-datasets-buffer-name "* BigQuery Datasets *")
+(defconst bigquery-tables-buffer-name "* BigQuery Tables *")
+(defconst bigquery-schema-buffer-name "* BigQuery Schema *")
+(defconst bigquery-table-buffer-name "* BigQuery Table *")
+(defconst bigquery-query-buffer-name "* BigQuery Query *")
 
-(defvar bigquery-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-c d") 'bigquery-dry-run-query)
-    (define-key map (kbd "C-c e") 'bigquery-run-query)
-    (define-key map (kbd "C-c t") 'bigquery-show-datasets)
-    map)
-  "Keymap for BigQuery major mode")
+(defun bqm-fetch-projects ()
+  (let ((projects-json (json-read-from-string (shell-command-to-string "gcloud projects list --format=json"))))
+    (mapcar (lambda (e) (list nil (vector (cdr (assoc 'projectId e))
+                                          (cdr (assoc 'name e))
+                                          (cdr (assoc 'projectNumber e)))))
+            projects-json)))
+
+(defun bqm-tab-list-project-button-props (project-id)
+  (list 'action (lambda (b) (bqm-set-project (button-get b 'project-id))) 'project-id project-id))
+
+(defun bqm-set-project (project-id)
+  (shell-command (format "gcloud config set project %s" project-id)))
+
+(defun bqm-fetch-tabulated-project-list ()
+  (let ((projects (json-read-from-string (shell-command-to-string "gcloud projects list --format=json"))))
+    (mapcar
+     (lambda (e) (let ((projectId (cdr (assoc 'projectId e)))
+                       (name (cdr (assoc 'name e)))
+                       (projectNumber (cdr (assoc 'projectNumber e))))
+                   (list nil
+                         (vector (cons projectId (bqm-tab-list-project-button-props projectId))
+                                 name
+                                 projectNumber))))
+                   projects)))
+
+(defun bqm-list-projects ()
+  (interactive)
+  (let ((buf (get-buffer-create bqm-projects-buffer-name))
+        (project-list (bqm-fetch-tabulated-project-list)))
+    (with-current-buffer buf
+      (setq tabulated-list-sort-key '("projectId" . nil))
+      (setq tabulated-list-format [("projectId" 30 t) ("name" 30 t) ("projectNumber" 10 t)])
+      (setq tabulated-list-entries project-list)
+      (tabulated-list-mode))
+    (let ((height (min 10 (+ (length project-list) 2))))
+      (display-buffer-at-bottom buf '((window-height . fit-window-to-buffer))))
+    (let ((w (get-buffer-window buf)))
+      (select-window w))))
 
 (defun bigquery-run-query ()
   (interactive)
   (bigquery-set-current-project-id)
   (let ((query (buffer-substring-no-properties (point-min) (point-max))))
     (bqm-execute-query query)))
-
-(defconst bigquery-datasets-buffer-name "* BigQuery Datasets *")
-(defconst bigquery-tables-buffer-name "* BigQuery Tables *")
-(defconst bigquery-schema-buffer-name "* BigQuery Schema *")
-(defconst bigquery-table-buffer-name "* BigQuery Table *")
-(defconst bigquery-query-buffer-name "* BigQuery Query *")
 
 (defun bigquery-fetch-datasets ()
   (let ((json-object-type 'alist))
@@ -162,11 +192,13 @@
 (defun bqm-table-head (table-name)
   (json-read-from-string (shell-command-to-string (format "bq head --format=json %s" table-name))))
 
+(defvar bqm-table-list-format-header)
+
 (defun bqm-tab-list-table (table-name)
-  (let ((header (bqm-table-list-format table-name))
+  (let ((bqm-table-list-format-header (bqm-table-list-format table-name))
         (content (bqm-table-head table-name))
         (row-to-entry (lambda (row) (list nil (apply 'vector (mapcar (lambda (f) (cdr (assoc (intern (car f)) row)))
-                                header))))))
+                                bqm-table-list-format-header))))))
     (mapcar row-to-entry content)))
 
 (defun bqm-show-table (table-name)
@@ -224,6 +256,16 @@
           (lambda ()
             (setq sqlind-indentation-offsets-alist
                   bigquery-sql-indentation-offsets-alist)))
+
+(defvar bigquery-mode-hook nil)
+
+(defvar bigquery-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c d") 'bigquery-dry-run-query)
+    (define-key map (kbd "C-c e") 'bigquery-run-query)
+    (define-key map (kbd "C-c t") 'bigquery-show-datasets)
+    map)
+  "Keymap for BigQuery major mode")
 
 (defun bigquery-mode ()
   "Major mode for editing bigquery scripts"
