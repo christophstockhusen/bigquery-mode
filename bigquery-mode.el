@@ -44,7 +44,10 @@
             projects-json)))
 
 (defun bqm-tab-list-project-button-props (project-id)
-  (list 'action (lambda (b) (bqm-set-project (button-get b 'project-id))) 'project-id project-id))
+  (list 'action (lambda (b)
+                  (bqm-set-project (button-get b 'project-id))
+                  (quit-window))
+        'project-id project-id))
 
 (defun bqm-set-project (project-id)
   (shell-command (format "gcloud config set project %s" project-id))
@@ -80,7 +83,11 @@
   (replace-regexp-in-string "\n$" "" (shell-command-to-string "gcloud config get-value project")))
 
 (defun bigquery-set-current-project-id ()
-  (setq mode-name (format "BigQuery[%s]" (bigquery-project-id))))
+  (let ((bufs (buffer-list)))
+    (dolist (b bufs)
+      (with-current-buffer b
+        (if (string-match "bigquery-mode" (symbol-name major-mode))
+            (setq mode-name (format "BigQuery[%s]" (bigquery-project-id))))))))
 
 (defun bigquery-run-query ()
   (interactive)
@@ -263,6 +270,7 @@
 (defvar bigquery-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "C-c d") 'bigquery-dry-run-query)
+    (define-key map (kbd "C-c s") 'bqm-list-projects)
     (define-key map (kbd "C-c e") 'bigquery-run-query)
     (define-key map (kbd "C-c t") 'bigquery-show-datasets)
     map)
