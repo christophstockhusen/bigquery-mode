@@ -235,8 +235,8 @@
 (eval-when-compile
   (setq bigquery-font-lock-keywords
         (list
-         '("`.+`" . 'font-lock-constant-face)
          '("--.*$" . 'font-lock-comment-face)
+         '("`.+`" . 'font-lock-constant-face)
          (bigquery-font-lock-keyword-builder 'font-lock-keyword-face bqm-keywords)
          (bigquery-font-lock-keyword-builder 'font-lock-function-name-face bqm-function-names))))
 
