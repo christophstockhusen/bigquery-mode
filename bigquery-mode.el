@@ -47,7 +47,8 @@
   (list 'action (lambda (b) (bqm-set-project (button-get b 'project-id))) 'project-id project-id))
 
 (defun bqm-set-project (project-id)
-  (shell-command (format "gcloud config set project %s" project-id)))
+  (shell-command (format "gcloud config set project %s" project-id))
+  (bigquery-set-current-project-id))
 
 (defun bqm-fetch-tabulated-project-list ()
   (let ((projects (json-read-from-string (shell-command-to-string "gcloud projects list --format=json"))))
@@ -59,7 +60,7 @@
                          (vector (cons projectId (bqm-tab-list-project-button-props projectId))
                                  name
                                  projectNumber))))
-                   projects)))
+     projects)))
 
 (defun bqm-list-projects ()
   (interactive)
@@ -74,6 +75,12 @@
       (display-buffer-at-bottom buf '((window-height . fit-window-to-buffer))))
     (let ((w (get-buffer-window buf)))
       (select-window w))))
+
+(defun bigquery-project-id ()
+  (replace-regexp-in-string "\n$" "" (shell-command-to-string "gcloud config get-value project")))
+
+(defun bigquery-set-current-project-id ()
+  (setq mode-name (format "BigQuery[%s]" (bigquery-project-id))))
 
 (defun bigquery-run-query ()
   (interactive)
@@ -241,12 +248,6 @@
     (modify-syntax-entry ?_ "w" st)
     st)
   "Syntax table for bigquery-mode")
-
-(defvar bigquery-project-id
-  (replace-regexp-in-string "\n$" "" (shell-command-to-string "gcloud config get-value project")))
-
-(defun bigquery-set-current-project-id ()
-  (setq mode-name (format "BigQuery[%s]" bigquery-project-id)))
 
 (defvar bigquery-sql-indentation-offsets-alist
   `((case-clause +)
