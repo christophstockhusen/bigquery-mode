@@ -160,7 +160,7 @@
       (setq tabulated-list-entries table-list)
       (tabulated-list-mode))
     (let ((height (min 40 (max 10 (+ (length table-list) 2)))))
-      (display-buffer-in-side-window buf '((window-height . fit-window-to-buffer))))
+      (display-buffer-at-bottom buf '((window-height . fit-window-to-buffer))))
     (let ((w (get-buffer-window buf)))
       (select-window w))))
 
@@ -174,7 +174,7 @@
       (setq tabulated-list-entries schema-list)
       (tabulated-list-mode))
     (let ((height (min 40 (max 10 (+ (length schema-list) 2)))))
-      (display-buffer-same-window buf '((window-height . fit-window-to-buffer))))
+      (display-buffer-at-bottom buf '((window-height . fit-window-to-buffer))))
     (let ((w (get-buffer-window buf)))
       (select-window w))))
 
@@ -269,7 +269,7 @@
       (setq tabulated-list-entries (bqm-tab-list-table table-name))
       (tabulated-list-mode))
     (let ((height (min 40 (max 10 (+ (length content) 2)))))
-      (display-buffer-same-window buf '((window-height . fit-window-to-buffer))))
+      (display-buffer-below-selected buf '((window-height . fit-window-to-buffer))))
     (let ((w (get-buffer-window buf)))
       (select-window w))))
 
@@ -315,8 +315,8 @@
 (defvar bigquery-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "C-c s") 'bqm-list-projects)
-    (define-key map (kbd "C-c d") 'bqm-dry-run-query)
-    (define-key map (kbd "C-c e") 'bigquery-run-query)
+    (define-key map (kbd "<C-M-return>") 'bqm-dry-run-query)
+    (define-key map (kbd "<C-return>") 'bigquery-run-query)
     (define-key map (kbd "C-c t") 'bigquery-show-datasets)
     map)
   "Keymap for BigQuery major mode")
@@ -333,6 +333,11 @@
   (run-hooks 'bigquery-mode-hook)
   (sqlind-minor-mode)
   )
+
+(add-hook 'bigquery-mode
+          (lambda ()
+            (set (make-local-variable 'comment-start) "--")
+            (set (make-local-variable 'comment-end) "")))
 
 (provide 'bigquery-mode)
 
