@@ -284,10 +284,13 @@
   (defun bqm-font-lock-keyword-builder (face keywords)
     (cons (concat "\\<" (regexp-opt keywords) "\\>") face)))
 
+(defconst bqm-block-comment-regexp "/\\*\\(.\\|\n\\)*?\\*/")
+
 (eval-when-compile
   (setq bqm-font-lock-keywords
         (list
          '("--.*$" . 'font-lock-comment-face)
+         ; '('bqm-block-comment-regexp . 'font-lock-comment-face)
          '("`.+`" . 'font-lock-constant-face)
          (bqm-font-lock-keyword-builder 'font-lock-keyword-face bqm-keywords)
          (bqm-font-lock-keyword-builder 'font-lock-function-name-face bqm-function-names))))
@@ -332,12 +335,15 @@
   (bqm-set-current-project-id)
   (run-hooks 'bigquery-mode-hook)
   (sqlind-minor-mode)
+  (setq-local comment-start "--")
+  (setq-local comment-end "")
+  (setq-local comment-start-skip "--[:blank:]*")
   )
 
-(add-hook 'bigquery-mode
-          (lambda ()
-            (set (make-local-variable 'comment-start) "--")
-            (set (make-local-variable 'comment-end) "")))
+;; (add-hook 'bigquery-mode
+;;           (lambda ()
+;;             (set (make-local-variable 'comment-start) "--")
+;;             (set (make-local-variable 'comment-end) "")))
 
 (provide 'bigquery-mode)
 
