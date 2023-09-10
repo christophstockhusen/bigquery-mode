@@ -5,7 +5,7 @@
 ;; Author: Christoph Stockhusen <mail@christophstockhusen.de>
 ;; Keywords: bigquery
 ;; Version 0.0.1
-;; Package-Requires: ((sql-ident "1.4))
+;; Package-Requires: ((sql-indent "1.4"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
